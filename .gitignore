@@ -1,0 +1,54 @@
+# === MAVEN ===
+HELP.md
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Maven Wrapper (mantener estos archivos en el repo)
+!.mvn/wrapper/maven-wrapper.jar
+!mvnw
+!mvnw.cmd
+
+# === IDEs ===
+### STS / Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+# === LOGS / TEMP ===
+*.log
+logs/
+tmp/
+*.tmp
+
+# === CONFIGURACIONES SENSIBLES ===
+.env
+.env.*
+application-local.properties
+firebase-credentials.json
+
+# === MACOS ===
+.DS_Store
