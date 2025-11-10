@@ -102,6 +102,25 @@ public class JwtService {
     }
 
     /**
+     * Valida un refresh token y verifica que no haya expirado ni sido revocado.
+     *
+     * @param token Token a validar
+     * @return RefreshToken si es válido
+     * @throws InvalidRefreshTokenException si el token no existe o no es válido
+     */
+    @Transactional(readOnly = true)
+    public RefreshToken validarRefreshToken(String token) {
+        RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
+                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token inválido o expirado"));
+
+        if (!refreshToken.esValido()) {
+            throw new InvalidRefreshTokenException("Refresh token inválido o expirado");
+        }
+
+        return refreshToken;
+    }
+
+    /**
      * Revoca un refresh token específico.
      *
      * @param token Token a revocar

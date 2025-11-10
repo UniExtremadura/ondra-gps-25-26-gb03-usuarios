@@ -83,6 +83,34 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Maneja excepciones cuando las credenciales de login son incorrectas.
+     * <p>Código de error: INVALID_CREDENTIALS | HTTP 401</p>
+     */
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidCredentials(InvalidCredentialsException ex) {
+        return createErrorResponse(
+                "INVALID_CREDENTIALS",
+                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED,
+                true
+        );
+    }
+
+    /**
+     * Maneja excepciones cuando la cuenta está inactiva.
+     * <p>Código de error: ACCOUNT_INACTIVE | HTTP 403</p>
+     */
+    @ExceptionHandler(AccountInactiveException.class)
+    public ResponseEntity<ErrorDTO> handleAccountInactive(AccountInactiveException ex) {
+        return createErrorResponse(
+                "ACCOUNT_INACTIVE",
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN,
+                false
+        );
+    }
+
+    /**
      * Maneja excepciones cuando el email no ha sido verificado.
      * <p>Código de error: EMAIL_NOT_VERIFIED | HTTP 403</p>
      */
@@ -110,6 +138,48 @@ public class GlobalExceptionHandler {
         );
     }
 
+    /**
+     * Maneja excepciones cuando el token de Google es inválido.
+     * <p>Código de error: INVALID_GOOGLE_TOKEN | HTTP 401</p>
+     */
+    @ExceptionHandler(InvalidGoogleTokenException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidGoogleToken(InvalidGoogleTokenException ex) {
+        return createErrorResponse(
+                "INVALID_GOOGLE_TOKEN",
+                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED,
+                true
+        );
+    }
+
+    /**
+     * Maneja excepciones cuando el login con Google está deshabilitado.
+     * <p>Código de error: GOOGLE_LOGIN_DISABLED | HTTP 403</p>
+     */
+    @ExceptionHandler(GoogleLoginDisabledException.class)
+    public ResponseEntity<ErrorDTO> handleGoogleLoginDisabled(GoogleLoginDisabledException ex) {
+        return createErrorResponse(
+                "GOOGLE_LOGIN_DISABLED",
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN,
+                false
+        );
+    }
+
+    /**
+     * Maneja excepciones cuando el refresh token es inválido.
+     * <p>Código de error: INVALID_REFRESH_TOKEN | HTTP 400</p>
+     */
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        return createErrorResponse(
+                "INVALID_REFRESH_TOKEN",
+                ex.getMessage(),
+                HttpStatus.BAD_REQUEST,
+                true
+        );
+    }
+    
     // ==================== EXCEPCIONES DE RECURSOS NO ENCONTRADOS ====================
 
     /**

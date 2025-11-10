@@ -1,5 +1,8 @@
 package com.ondra.users.services;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.FirebaseToken;
 import com.ondra.users.dto.*;
 import com.ondra.users.security.JwtService;
 import com.ondra.users.exceptions.*;
@@ -24,6 +27,7 @@ import java.util.UUID;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final FirebaseAuth firebaseAuth;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailService emailService;
@@ -163,6 +167,175 @@ public class UsuarioService {
                 .activo(usuario.isActivo())
                 .permiteGoogle(usuario.isPermiteGoogle())
                 .emailVerificado(usuario.isEmailVerificado())
+                .build();
+    }
+
+    /**
+     * Autentica un usuario con email y contraseña, retornando JWT y refresh token.
+     * SOLO permite login si el email ha sido verificado.
+     *
+     * @param loginDTO Credenciales del usuario
+     * @return {@link AuthResponseDTO} con tokens y datos del usuario
+     * @throws InvalidCredentialsException Si las credenciales son incorrectas
+     * @throws AccountInactiveException Si la cuenta está inactiva
+     * @throws EmailNotVerifiedException Si el email no ha sido verificado
+     */
+    @Transactional
+    public AuthResponseDTO loginUsuario(LoginUsuarioDTO loginDTO) {
+        Usuario usuario = usuarioRepository.findByEmailUsuario(loginDTO.getEmailUsuario())
+                .orElseThrow(() -> {
+                    log.warn("Intento de login con email no registrado: {}", loginDTO.getEmailUsuario());
+                    return new InvalidCredentialsException("Email o contraseña incorrectos");
+                });
+
+        if (!usuario.isActivo()) {
+            log.warn("Intento de login en cuenta inactiva. Usuario ID: {}", usuario.getIdUsuario());
+            throw new AccountInactiveException("La cuenta está inactiva. Contacta con soporte");
+        }
+
+        // VALIDAR QUE EL EMAIL ESTÉ VERIFICADO
+        if (!usuario.isEmailVerificado()) {
+            log.warn("Intento de login sin verificar email. Usuario ID: {}", usuario.getIdUsuario());
+            throw new EmailNotVerifiedException("Debes verificar tu email antes de iniciar sesión. Revisa tu bandeja de entrada");
+        }
+
+        if (usuario.getPasswordUsuario() == null || usuario.getPasswordUsuario().isEmpty()) {
+            log.warn("Intento de login con contraseña en cuenta de Google. Usuario ID: {}", usuario.getIdUsuario());
+            throw new InvalidCredentialsException("Esta cuenta solo permite login con Google");
+        }
+
+        if (!passwordEncoder.matches(loginDTO.getPasswordUsuario(), usuario.getPasswordUsuario())) {
+            log.warn("Contraseña incorrecta para usuario: {}", loginDTO.getEmailUsuario());
+            throw new InvalidCredentialsException("Email o contraseña incorrectos");
+        }
+
+        String token = jwtService.generarToken(
+                usuario.getEmailUsuario(),
+                usuario.getIdUsuario(),
+                usuario.getTipoUsuario().name()
+        );
+
+        RefreshToken refreshToken = jwtService.generarRefreshToken(usuario);
+
+        log.info("Login exitoso para usuario ID: {}", usuario.getIdUsuario());
+
+        return AuthResponseDTO.builder()
+                .token(token)
+                .refreshToken(refreshToken.getToken())
+                .usuario(convertirAUsuarioDTO(usuario))
+                .build();
+    }
+
+    /**
+     * Autentica o registra un usuario mediante token de Google/Firebase.
+     * Los usuarios de Google NO necesitan verificación de email (Google ya lo verifica).
+     *
+     * @param loginGoogleDTO Token de autenticación de Google
+     * @return {@link AuthResponseDTO} con token JWT y datos del usuario
+     */
+    @Transactional
+    public AuthResponseDTO loginGoogle(LoginGoogleDTO loginGoogleDTO) {
+        FirebaseToken decodedToken;
+
+        try {
+            decodedToken = firebaseAuth.verifyIdToken(loginGoogleDTO.getIdToken());
+        } catch (FirebaseAuthException e) {
+            log.error("Token de Google inválido: {}", e.getMessage());
+            throw new InvalidGoogleTokenException("El token de Google es inválido o ha expirado");
+        }
+
+        String googleUid = decodedToken.getUid();
+        String email = decodedToken.getEmail();
+        String nombre = decodedToken.getName();
+
+        Optional<Usuario> usuarioOpt = usuarioRepository.findByGoogleUid(googleUid);
+        if (usuarioOpt.isEmpty()) {
+            usuarioOpt = usuarioRepository.findByEmailUsuario(email);
+        }
+
+        Usuario usuario;
+
+        if (usuarioOpt.isPresent()) {
+            usuario = usuarioOpt.get();
+
+            if (!usuario.isPermiteGoogle()) {
+                log.warn("Intento de login con Google en cuenta sin permiso. Usuario ID: {}", usuario.getIdUsuario());
+                throw new GoogleLoginDisabledException("Esta cuenta no tiene habilitado el login con Google");
+            }
+
+            if (!usuario.isActivo()) {
+                log.warn("Intento de login con Google en cuenta inactiva. Usuario ID: {}", usuario.getIdUsuario());
+                throw new AccountInactiveException("La cuenta está inactiva. Contacta con soporte");
+            }
+
+            if (usuario.getGoogleUid() == null || usuario.getGoogleUid().isEmpty()) {
+                usuario.setGoogleUid(googleUid);
+                usuario = usuarioRepository.save(usuario);
+                log.info("Google UID vinculado al usuario ID: {}", usuario.getIdUsuario());
+            }
+
+            log.info("Login con Google exitoso para usuario ID: {}", usuario.getIdUsuario());
+        } else {
+            String[] nombreCompleto = separarNombreCompleto(nombre);
+
+            usuario = Usuario.builder()
+                    .emailUsuario(email)
+                    .googleUid(googleUid)
+                    .nombreUsuario(nombreCompleto[0])
+                    .apellidosUsuario(nombreCompleto[1])
+                    .tipoUsuario(TipoUsuario.NORMAL)
+                    .fechaRegistro(LocalDateTime.now())
+                    .activo(true)
+                    .emailVerificado(true) // Google ya verifica el email
+                    .permiteGoogle(true)
+                    .fotoPerfil(decodedToken.getPicture())
+                    .build();
+
+            usuario = usuarioRepository.save(usuario);
+            log.info("Nuevo usuario registrado vía Google con ID: {} y email: {}", usuario.getIdUsuario(), usuario.getEmailUsuario());
+        }
+
+        String token = jwtService.generarToken(
+                usuario.getEmailUsuario(),
+                usuario.getIdUsuario(),
+                usuario.getTipoUsuario().name()
+        );
+
+        RefreshToken refreshToken = jwtService.generarRefreshToken(usuario);
+
+        return AuthResponseDTO.builder()
+                .token(token)
+                .refreshToken(refreshToken.getToken())
+                .usuario(convertirAUsuarioDTO(usuario))
+                .build();
+    }
+
+    /**
+     * Renueva un access token usando un refresh token válido.
+     *
+     * @param refreshTokenString String del refresh token
+     * @return Nuevos access token y refresh token
+     * @throws InvalidRefreshTokenException Si el refresh token es inválido
+     */
+    @Transactional
+    public RefreshTokenResponseDTO renovarAccessToken(String refreshTokenString) {
+        RefreshToken refreshToken = jwtService.validarRefreshToken(refreshTokenString);
+        Usuario usuario = refreshToken.getUsuario();
+
+        String nuevoAccessToken = jwtService.generarToken(
+                usuario.getEmailUsuario(),
+                usuario.getIdUsuario(),
+                usuario.getTipoUsuario().name()
+        );
+
+        jwtService.revocarRefreshToken(refreshTokenString);
+        RefreshToken nuevoRefreshToken = jwtService.generarRefreshToken(usuario);
+
+        log.info("Access token renovado para usuario ID: {}", usuario.getIdUsuario());
+
+        return RefreshTokenResponseDTO.builder()
+                .accessToken(nuevoAccessToken)
+                .refreshToken(nuevoRefreshToken.getToken())
                 .build();
     }
 
