@@ -356,4 +356,156 @@ public class UsuarioService {
 
         return new String[]{nombre, apellidos};
     }
+
+    /**
+     * Genera un código aleatorio de 6 dígitos.
+     *
+     * @return String con 6 dígitos numéricos
+     */
+    private String generarCodigoAleatorio() {
+        Random random = new Random();
+        int codigo = 100000 + random.nextInt(900000); // Rango: 100000-999999
+        return String.valueOf(codigo);
+    }
+
+    /**
+     * Cierra la sesión de un usuario revocando su refresh token.
+     *
+     * @param refreshToken Refresh token a revocar
+     */
+    @Transactional
+    public void logout(String refreshToken) {
+        jwtService.revocarRefreshToken(refreshToken);
+        log.info("Sesión cerrada (refresh token revocado)");
+    }
+
+    /**
+     * Cierra todas las sesiones activas de un usuario.
+     *
+     * @param idUsuario ID del usuario
+     */
+    @Transactional
+    public void logoutGlobal(Long idUsuario) {
+        jwtService.revocarTodosLosTokensDelUsuario(idUsuario);
+        log.info("Todas las sesiones cerradas para usuario ID: {}", idUsuario);
+    }
+
+    /**
+     * Solicita recuperación de contraseña enviando email con código de 6 dígitos y token.
+     * NO revela si el email existe para prevenir enumeración de usuarios.
+     *
+     * @param dto Contiene el email del usuario
+     */
+    @Transactional
+    public void solicitarRecuperacionPassword(RecuperarPasswordDTO dto) {
+        Optional<Usuario> usuarioOpt = usuarioRepository
+                .findByEmailUsuario(dto.getEmailUsuario());
+
+        // IMPORTANTE: Siempre responde igual (no revela si existe el email)
+        if (usuarioOpt.isEmpty()) {
+            log.info("Solicitud de recuperación para email no registrado: {}",
+                    dto.getEmailUsuario());
+            return; // No hacer nada, pero el controller responderá OK
+        }
+
+        Usuario usuario = usuarioOpt.get();
+
+        // Si la cuenta está inactiva, no enviar email
+        if (!usuario.isActivo()) {
+            log.warn("Solicitud de recuperación para cuenta inactiva. Usuario ID: {}",
+                    usuario.getIdUsuario());
+            return; // No revelar que la cuenta existe pero está inactiva
+        }
+
+        // Generar código de 6 dígitos aleatorio
+        String codigoVerificacion = generarCodigoAleatorio();
+
+        // Generar token de recuperación (UUID para el enlace)
+        String tokenRecuperacion = UUID.randomUUID().toString();
+        LocalDateTime fechaExpiracion = LocalDateTime.now().plusHours(1); // 1 hora
+
+        // Guardar el código Y el token en la base de datos
+        usuario.setCodigoRecuperacion(codigoVerificacion);
+        usuario.setTokenRecuperacion(tokenRecuperacion);
+        usuario.setFechaExpiracionTokenRecuperacion(fechaExpiracion);
+        usuarioRepository.save(usuario);
+
+        // Enviar email con el código Y el token
+        try {
+            emailService.enviarEmailRecuperacionConCodigo(
+                    usuario.getEmailUsuario(),
+                    codigoVerificacion,      // Código de 6 dígitos
+                    tokenRecuperacion        // Token para el enlace
+            );
+            log.info("Email de recuperación enviado a: {}", usuario.getEmailUsuario());
+        } catch (Exception e) {
+            log.error("Error al enviar email de recuperación: {}", e.getMessage());
+            // No lanzar excepción para no revelar información
+        }
+    }
+
+    /**
+     * Restablece la contraseña usando el token y código recibidos por email.
+     * Este endpoint es público (no requiere autenticación).
+     *
+     * @param dto Contiene el token, código de 6 dígitos y la nueva contraseña
+     * @throws InvalidPasswordResetTokenException Si el token o código son inválidos o expiraron
+     */
+    @Transactional
+    public void restablecerPassword(RestablecerPasswordDTO dto) {
+        Usuario usuario = usuarioRepository.findByTokenRecuperacion(dto.getToken())
+                .orElseThrow(() -> new InvalidPasswordResetTokenException(
+                        "Token de recuperación inválido"
+                ));
+
+        // Validar que no haya expirado
+        if (usuario.getFechaExpiracionTokenRecuperacion() == null ||
+                usuario.getFechaExpiracionTokenRecuperacion().isBefore(LocalDateTime.now())) {
+            log.warn("Token de recuperación expirado para usuario ID: {}",
+                    usuario.getIdUsuario());
+            throw new InvalidPasswordResetTokenException("El token ha expirado");
+        }
+
+        // Validar que el código de 6 dígitos coincida
+        if (!dto.getCodigoVerificacion().equals(usuario.getCodigoRecuperacion())) {
+            log.warn("Código de verificación incorrecto para usuario ID: {}",
+                    usuario.getIdUsuario());
+            throw new InvalidPasswordResetTokenException("El código de verificación es incorrecto");
+        }
+
+        // Validar que la cuenta esté activa
+        if (!usuario.isActivo()) {
+            log.warn("Intento de restablecer contraseña en cuenta inactiva. Usuario ID: {}",
+                    usuario.getIdUsuario());
+            throw new AccountInactiveException("La cuenta está inactiva. Contacta con soporte");
+        }
+
+        // Actualizar contraseña (hasheada)
+        usuario.setPasswordUsuario(passwordEncoder.encode(dto.getNuevaPassword()));
+
+        // Limpiar token Y código usados (evita reutilización)
+        usuario.setTokenRecuperacion(null);
+        usuario.setFechaExpiracionTokenRecuperacion(null);
+        usuario.setCodigoRecuperacion(null);
+
+        usuarioRepository.save(usuario);
+
+        // SEGURIDAD: Revocar todos los refresh tokens activos (logout global)
+        jwtService.revocarTodosLosTokensDelUsuario(usuario.getIdUsuario());
+
+        // Enviar email de confirmación del cambio (notificación de seguridad)
+        try {
+            emailService.enviarEmailConfirmacionCambioPassword(
+                    usuario.getEmailUsuario(),
+                    usuario.getNombreUsuario()
+            );
+        } catch (Exception e) {
+            log.error("Error al enviar email de confirmación: {}", e.getMessage());
+            // No fallar el proceso si el email no se envía
+        }
+
+        log.info("Contraseña restablecida exitosamente para usuario ID: {}",
+                usuario.getIdUsuario());
+    }
+
 }

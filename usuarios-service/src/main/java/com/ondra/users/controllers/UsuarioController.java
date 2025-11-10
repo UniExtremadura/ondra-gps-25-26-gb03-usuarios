@@ -102,4 +102,54 @@ public class UsuarioController {
         );
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Cierra la sesión de un usuario revocando su refresh token.
+     *
+     * @param request objeto con el refresh token a revocar
+     * @return respuesta vacía con código 200
+     */
+    @PostMapping("/usuarios/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequestDTO request) {
+        usuarioService.logout(request.getRefreshToken());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Cierra todas las sesiones activas de un usuario.
+     * Requiere autenticación JWT.
+     *
+     * @param authentication Objeto de autenticación de Spring Security
+     * @return respuesta vacía con código 200
+     */
+    @PostMapping("/usuarios/logout-all")
+    public ResponseEntity<Void> logoutAll(Authentication authentication) {
+        Long authenticatedUserId = Long.parseLong(authentication.getName());
+        usuarioService.logoutGlobal(authenticatedUserId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Solicita un enlace de recuperación de contraseña por email.
+     * Este endpoint es público.
+     */
+    @PostMapping("/usuarios/recuperar-password")
+    public ResponseEntity<String> recuperarPassword(
+            @Valid @RequestBody RecuperarPasswordDTO dto) {
+        usuarioService.solicitarRecuperacionPassword(dto);
+        return ResponseEntity.ok(
+                "Si el email existe, recibirás un enlace de recuperación"
+        );
+    }
+
+    /**
+     * Restablece la contraseña usando el token recibido por email.
+     * Este endpoint es público.
+     */
+    @PostMapping("/usuarios/restablecer-password")
+    public ResponseEntity<String> restablecerPassword(
+            @Valid @RequestBody RestablecerPasswordDTO dto) {
+        usuarioService.restablecerPassword(dto);
+        return ResponseEntity.ok("Contraseña restablecida correctamente");
+    }
 }

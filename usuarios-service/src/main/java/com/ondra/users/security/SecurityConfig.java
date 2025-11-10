@@ -72,6 +72,11 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.POST, "/api/usuarios/login/google").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/usuarios/refresh").permitAll();
 
+                    // HU03
+                    auth.requestMatchers(HttpMethod.POST, "/api/usuarios/logout").permitAll();
+                    auth.requestMatchers(HttpMethod.POST, "/api/usuarios/recuperar-password").permitAll();
+                    auth.requestMatchers(HttpMethod.POST, "/api/usuarios/restablecer-password").permitAll();
+
                     auth.requestMatchers(HttpMethod.GET, "/actuator/health").permitAll();
                     auth.anyRequest().authenticated();
                 })

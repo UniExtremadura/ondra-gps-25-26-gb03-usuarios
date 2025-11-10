@@ -179,6 +179,20 @@ public class GlobalExceptionHandler {
                 true
         );
     }
+
+    /**
+     * Maneja excepciones cuando el token de recuperación de contraseña es inválido.
+     * <p>Código de error: INVALID_PASSWORD_RESET_TOKEN | HTTP 400</p>
+     */
+    @ExceptionHandler(InvalidPasswordResetTokenException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidPasswordResetToken(InvalidPasswordResetTokenException ex) {
+        return createErrorResponse(
+                "INVALID_PASSWORD_RESET_TOKEN",
+                ex.getMessage(),
+                HttpStatus.BAD_REQUEST,
+                false
+        );
+    }
     
     // ==================== EXCEPCIONES DE RECURSOS NO ENCONTRADOS ====================
 
