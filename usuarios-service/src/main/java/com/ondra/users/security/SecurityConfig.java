@@ -77,6 +77,15 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.POST, "/api/usuarios/recuperar-password").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/usuarios/restablecer-password").permitAll();
 
+                    // HU05
+                    auth.requestMatchers(HttpMethod.GET, "/api/seguimientos/*/seguidos").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/seguimientos/*/seguidores").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/seguimientos/*/estadisticas").permitAll();
+                    
+                    auth.requestMatchers(HttpMethod.POST, "/api/seguimientos").authenticated();
+                    auth.requestMatchers(HttpMethod.DELETE, "/api/seguimientos/**").authenticated();
+                    auth.requestMatchers(HttpMethod.GET, "/api/seguimientos/*/verificar").authenticated();
+
                     auth.requestMatchers(HttpMethod.GET, "/actuator/health").permitAll();
                     auth.anyRequest().authenticated();
                 })

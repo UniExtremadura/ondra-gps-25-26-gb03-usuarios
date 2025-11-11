@@ -193,7 +193,7 @@ public class GlobalExceptionHandler {
                 false
         );
     }
-    
+
     // ==================== EXCEPCIONES DE RECURSOS NO ENCONTRADOS ====================
 
     /**
@@ -207,6 +207,66 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 HttpStatus.NOT_FOUND,
                 false
+        );
+    }
+
+    // ==================== EXCEPCIONES DE PERMISOS ====================
+
+    /**
+     * Maneja excepciones cuando un usuario intenta acceder a recursos sin permisos.
+     * <p>Código de error: FORBIDDEN | HTTP 403</p>
+     */
+    @ExceptionHandler(ForbiddenAccessException.class)
+    public ResponseEntity<ErrorDTO> handleForbiddenAccess(ForbiddenAccessException ex) {
+        return createErrorResponse(
+                "FORBIDDEN",
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN,
+                false
+        );
+    }
+
+    // ==================== EXCEPCIONES DE SEGUIMIENTOS ====================
+
+    /**
+     * Maneja excepciones cuando se intenta realizar un seguimiento inválido.
+     * <p>Código de error: INVALID_FOLLOW | HTTP 400</p>
+     */
+    @ExceptionHandler(InvalidFollowException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidFollow(InvalidFollowException ex) {
+        return createErrorResponse(
+                "INVALID_FOLLOW",
+                ex.getMessage(),
+                HttpStatus.BAD_REQUEST,
+                true
+        );
+    }
+
+    /**
+     * Maneja excepciones cuando se intenta crear un seguimiento duplicado.
+     * <p>Código de error: DUPLICATE_FOLLOW | HTTP 409</p>
+     */
+    @ExceptionHandler(DuplicateFollowException.class)
+    public ResponseEntity<ErrorDTO> handleDuplicateFollow(DuplicateFollowException ex) {
+        return createErrorResponse(
+                "DUPLICATE_FOLLOW",
+                ex.getMessage(),
+                HttpStatus.CONFLICT,
+                true
+        );
+    }
+
+    /**
+     * Maneja excepciones cuando no se encuentra un seguimiento existente.
+     * <p>Código de error: FOLLOW_NOT_FOUND | HTTP 404</p>
+     */
+    @ExceptionHandler(FollowNotFoundException.class)
+    public ResponseEntity<ErrorDTO> handleFollowNotFound(FollowNotFoundException ex) {
+        return createErrorResponse(
+                "FOLLOW_NOT_FOUND",
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND,
+                true
         );
     }
 
