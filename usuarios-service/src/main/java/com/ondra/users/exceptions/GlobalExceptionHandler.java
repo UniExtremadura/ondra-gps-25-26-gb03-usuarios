@@ -226,6 +226,22 @@ public class GlobalExceptionHandler {
         );
     }
 
+    // ==================== EXCEPCIONES DE VALIDACIÓN DE DATOS ====================
+
+    /**
+     * Maneja excepciones cuando los datos proporcionados son inválidos.
+     * <p>Código de error: INVALID_DATA | HTTP 400</p>
+     */
+    @ExceptionHandler(InvalidDataException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidData(InvalidDataException ex) {
+        return createErrorResponse(
+                "INVALID_DATA",
+                ex.getMessage(),
+                HttpStatus.BAD_REQUEST,
+                false
+        );
+    }
+
     // ==================== EXCEPCIONES DE SEGUIMIENTOS ====================
 
     /**
@@ -266,6 +282,78 @@ public class GlobalExceptionHandler {
                 "FOLLOW_NOT_FOUND",
                 ex.getMessage(),
                 HttpStatus.NOT_FOUND,
+                true
+        );
+    }
+
+    // ==================== EXCEPCIONES DE ARCHIVOS ====================
+
+    /**
+     * Maneja excepciones cuando no se proporciona ningún archivo.
+     * <p>Código de error: NO_FILE_PROVIDED | HTTP 400</p>
+     */
+    @ExceptionHandler(NoFileProvidedException.class)
+    public ResponseEntity<ErrorDTO> handleNoFileProvided(NoFileProvidedException ex) {
+        return createErrorResponse(
+                "NO_FILE_PROVIDED",
+                ex.getMessage(),
+                HttpStatus.BAD_REQUEST,
+                false
+        );
+    }
+
+    /**
+     * Maneja excepciones cuando el formato de la imagen es inválido.
+     * <p>Código de error: INVALID_IMAGE_FORMAT | HTTP 400</p>
+     */
+    @ExceptionHandler(InvalidImageFormatException.class)
+    public ResponseEntity<ErrorDTO> handleInvalidImageFormat(InvalidImageFormatException ex) {
+        return createErrorResponse(
+                "INVALID_IMAGE_FORMAT",
+                ex.getMessage(),
+                HttpStatus.BAD_REQUEST,
+                false
+        );
+    }
+
+    /**
+     * Maneja excepciones cuando el tamaño de la imagen excede el límite permitido.
+     * <p>Código de error: IMAGE_SIZE_EXCEEDED | HTTP 413</p>
+     */
+    @ExceptionHandler(ImageSizeExceededException.class)
+    public ResponseEntity<ErrorDTO> handleImageSizeExceeded(ImageSizeExceededException ex) {
+        return createErrorResponse(
+                "IMAGE_SIZE_EXCEEDED",
+                ex.getMessage(),
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                false
+        );
+    }
+
+    /**
+     * Maneja excepciones cuando falla la subida de imagen a Cloudinary.
+     * <p>Código de error: IMAGE_UPLOAD_FAILED | HTTP 502</p>
+     */
+    @ExceptionHandler(ImageUploadFailedException.class)
+    public ResponseEntity<ErrorDTO> handleImageUploadFailed(ImageUploadFailedException ex) {
+        return createErrorResponse(
+                "IMAGE_UPLOAD_FAILED",
+                ex.getMessage(),
+                HttpStatus.BAD_GATEWAY,
+                true
+        );
+    }
+
+    /**
+     * Maneja excepciones cuando falla la eliminación de imagen de Cloudinary.
+     * <p>Código de error: IMAGE_DELETION_FAILED | HTTP 502</p>
+     */
+    @ExceptionHandler(ImageDeletionFailedException.class)
+    public ResponseEntity<ErrorDTO> handleImageDeletionFailed(ImageDeletionFailedException ex) {
+        return createErrorResponse(
+                "IMAGE_DELETION_FAILED",
+                ex.getMessage(),
+                HttpStatus.BAD_GATEWAY,
                 true
         );
     }
