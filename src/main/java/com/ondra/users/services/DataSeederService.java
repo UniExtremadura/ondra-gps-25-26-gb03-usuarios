@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 @Service
-@Profile("dev")
+@Profile({"dev", "docker"})
 public class DataSeederService implements CommandLineRunner {
 
     private final UsuarioRepository usuarioRepository;
@@ -40,8 +40,8 @@ public class DataSeederService implements CommandLineRunner {
     private final RedSocialRepository redSocialRepository;
     private final PasswordEncoder passwordEncoder;
 
-    private static final String[] PAYMENT_TYPES = {"TARJETA", "TRANSFERENCIA", "PAYPAL", "BIZUM"};
-    private static final String[] COBRO_TYPES = {"TRANSFERENCIA", "PAYPAL", "BIZUM"};
+    private static final String[] PAYMENT_TYPES = { "TARJETA", "TRANSFERENCIA", "PAYPAL", "BIZUM" };
+    private static final String[] COBRO_TYPES = { "TRANSFERENCIA", "PAYPAL", "BIZUM" };
     private static final String[] PROVINCIAS = {
             "Madrid", "Barcelona", "Valencia", "Sevilla", "Zaragoza",
             "Málaga", "Murcia", "Palma", "Las Palmas", "Bilbao"
@@ -51,10 +51,16 @@ public class DataSeederService implements CommandLineRunner {
     private boolean seedEnabled;
 
     @Override
-    @Transactional
     public void run(String... args) {
         if (!seedEnabled) {
             log.info("⏭️  Data seeding deshabilitado");
+            return;
+        }
+
+        // Verificar si ya hay datos en la base de datos
+        long totalUsuarios = usuarioRepository.count();
+        if (totalUsuarios > 0) {
+            log.info("✅ Base de datos ya contiene {} usuarios. Seeding omitido (datos ya existen)", totalUsuarios);
             return;
         }
 
@@ -335,7 +341,8 @@ public class DataSeederService implements CommandLineRunner {
             boolean existe = seguimientoRepository.existsBySeguidor_IdUsuarioAndSeguido_IdUsuario(
                     seguidor.getIdUsuario(), seguido.getIdUsuario());
 
-            if (existe) return false;
+            if (existe)
+                return false;
 
             Seguimiento seguimiento = Seguimiento.builder()
                     .seguidor(seguidor)
@@ -354,7 +361,8 @@ public class DataSeederService implements CommandLineRunner {
      * Selecciona elementos aleatorios de una lista.
      */
     private <T> List<T> seleccionarAleatorios(List<T> lista, int cantidad, Random random) {
-        if (cantidad >= lista.size()) return new ArrayList<>(lista);
+        if (cantidad >= lista.size())
+            return new ArrayList<>(lista);
         List<T> copia = new ArrayList<>(lista);
         Collections.shuffle(copia, random);
         return copia.subList(0, Math.min(cantidad, copia.size()));
@@ -362,20 +370,28 @@ public class DataSeederService implements CommandLineRunner {
 
     private String generarUrlRedSocial(String plataforma, String username) {
         switch (plataforma.toUpperCase()) {
-            case "INSTAGRAM": return "https://instagram.com/" + username;
-            case "X": return "https://x.com/" + username;
-            case "FACEBOOK": return "https://facebook.com/" + username;
-            case "TIKTOK": return "https://tiktok.com/@" + username;
-            case "YOUTUBE": return "https://youtube.com/@" + username;
-            case "SPOTIFY": return "https://open.spotify.com/artist/" + username;
-            default: return "https://" + plataforma.toLowerCase() + ".com/" + username;
+            case "INSTAGRAM":
+                return "https://instagram.com/" + username;
+            case "X":
+                return "https://x.com/" + username;
+            case "FACEBOOK":
+                return "https://facebook.com/" + username;
+            case "TIKTOK":
+                return "https://tiktok.com/@" + username;
+            case "YOUTUBE":
+                return "https://youtube.com/@" + username;
+            case "SPOTIFY":
+                return "https://open.spotify.com/artist/" + username;
+            default:
+                return "https://" + plataforma.toLowerCase() + ".com/" + username;
         }
     }
 
     private String generarIBAN() {
         Random random = new Random();
         StringBuilder iban = new StringBuilder("ES");
-        for (int i = 0; i < 22; i++) iban.append(random.nextInt(10));
+        for (int i = 0; i < 22; i++)
+            iban.append(random.nextInt(10));
         return iban.toString();
     }
 
@@ -396,7 +412,8 @@ public class DataSeederService implements CommandLineRunner {
         StringBuilder numero = new StringBuilder();
         for (int i = 0; i < 16; i++) {
             numero.append(random.nextInt(10));
-            if ((i + 1) % 4 == 0 && i < 15) numero.append(" ");
+            if ((i + 1) % 4 == 0 && i < 15)
+                numero.append(" ");
         }
         return numero.toString();
     }

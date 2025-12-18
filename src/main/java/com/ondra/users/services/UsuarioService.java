@@ -589,67 +589,132 @@ public class UsuarioService {
             throw new ForbiddenAccessException("No tienes permiso para modificar este perfil");
         }
 
+        // Eliminar foto de perfil del usuario
         if (usuario.getFotoPerfil() != null && !usuario.getFotoPerfil().isEmpty() &&
                 !usuario.getFotoPerfil().contains("googleusercontent.com")) {
             cloudinaryService.eliminarImagen(usuario.getFotoPerfil());
             log.info("Foto de perfil eliminada de Cloudinary para usuario ID: {}", id);
         }
 
+        // Eliminar métodos de pago del usuario
         List<MetodoPagoUsuario> metodosDeUsuario = metodoPagoUsuarioRepository.findByUsuario_IdUsuario(id);
         if (!metodosDeUsuario.isEmpty()) {
             metodoPagoUsuarioRepository.deleteAll(metodosDeUsuario);
+            log.info("Métodos de pago eliminados para usuario ID: {}", id);
         }
 
+        // Eliminar seguimientos (como seguidor o seguido)
         seguimientoRepository.deleteBySeguidorIdUsuarioOrSeguidoIdUsuario(id, id);
         log.info("Seguimientos eliminados para usuario ID: {}", id);
 
-        log.info("Eliminando datos del usuario en microservicio Contenidos...");
-        contenidosClient.eliminarComprasUsuario(id);
-        contenidosClient.eliminarFavoritosUsuario(id);
-        contenidosClient.eliminarCarritoUsuario(id);
-        contenidosClient.eliminarComentariosUsuario(id);
-        contenidosClient.eliminarValoracionesUsuario(id);
-
-        log.info("Eliminando preferencias en microservicio Recomendaciones...");
-        recomendacionesClient.eliminarPreferenciasUsuario(id);
-
+        // Si es artista, eliminar primero el contenido del artista
         if (usuario.getTipoUsuario() == TipoUsuario.ARTISTA) {
             Optional<Artista> artistaOpt = artistaRepository.findByUsuario_IdUsuario(id);
             if (artistaOpt.isPresent()) {
                 Artista artista = artistaOpt.get();
+                log.info("Procesando eliminación de artista ID: {} asociado al usuario ID: {}",
+                        artista.getIdArtista(), id);
 
+                // Eliminar foto de perfil artístico
                 if (artista.getFotoPerfilArtistico() != null && !artista.getFotoPerfilArtistico().isEmpty()) {
                     cloudinaryService.eliminarImagen(artista.getFotoPerfilArtistico());
                     log.info("Foto de artista eliminada de Cloudinary para artista ID: {}", artista.getIdArtista());
                 }
 
+                // Eliminar redes sociales del artista
                 List<RedSocial> redesSociales = redSocialRepository.findByArtista_IdArtista(artista.getIdArtista());
                 if (!redesSociales.isEmpty()) {
                     redSocialRepository.deleteAll(redesSociales);
+                    log.info("Redes sociales eliminadas para artista ID: {}", artista.getIdArtista());
                 }
 
-                List<MetodoCobroArtista> metodosCobroArtista = metodoCobroArtistaRepository.findByArtista_IdArtista(artista.getIdArtista());
+                // Eliminar métodos de cobro del artista
+                List<MetodoCobroArtista> metodosCobroArtista = metodoCobroArtistaRepository
+                        .findByArtista_IdArtista(artista.getIdArtista());
                 if (!metodosCobroArtista.isEmpty()) {
                     metodoCobroArtistaRepository.deleteAll(metodosCobroArtista);
+                    log.info("Métodos de cobro eliminados para artista ID: {}", artista.getIdArtista());
+                }
+                
+                log.info("Eliminando contenido del artista en microservicio Contenidos...");
+
+                try {
+                    contenidosClient.eliminarComentariosUsuario(id);
+                    log.info("✅ Comentarios del artista ID: {} eliminados", artista.getIdArtista());
+                } catch (Exception e) {
+                    log.error("⚠️ Error al eliminar comentarios del artista ID: {}", artista.getIdArtista(), e);
                 }
 
-                log.info("Eliminando contenido del artista en microservicio Contenidos...");
-                contenidosClient.eliminarCarritoUsuario(usuario.getIdUsuario());
-                contenidosClient.eliminarFavoritosUsuario(usuario.getIdUsuario());
-                contenidosClient.eliminarComprasUsuario(usuario.getIdUsuario());
-                contenidosClient.eliminarComentariosUsuario(usuario.getIdUsuario());
-                contenidosClient.eliminarValoracionesUsuario(usuario.getIdUsuario());
+                try {
+                    contenidosClient.eliminarValoracionesUsuario(id);
+                    log.info("✅ Valoraciones del artista ID: {} eliminadas", artista.getIdArtista());
+                } catch (Exception e) {
+                    log.error("⚠️ Error al eliminar valoraciones del artista ID: {}", artista.getIdArtista(), e);
+                }
 
+                try {
+                    contenidosClient.eliminarAlbumesArtista(artista.getIdArtista());
+                    log.info("✅ Álbumes del artista ID: {} eliminados", artista.getIdArtista());
+                } catch (Exception e) {
+                    log.error("⚠️ Error al eliminar álbumes del artista ID: {}", artista.getIdArtista(), e);
+                }
+
+                try {
+                    contenidosClient.eliminarCancionesArtista(artista.getIdArtista());
+                    log.info("✅ Canciones del artista ID: {} eliminadas", artista.getIdArtista());
+                } catch (Exception e) {
+                    log.error("⚠️ Error al eliminar canciones del artista ID: {}", artista.getIdArtista(), e);
+                }
+
+                // Eliminar el registro de artista
                 artistaRepository.delete(artista);
+                log.info("Registro de artista ID: {} eliminado", artista.getIdArtista());
             }
         }
 
-        jwtService.revocarTodosLosTokensDelUsuario(id);
+        // Eliminar datos comunes del usuario en microservicio Contenidos
+        log.info("Eliminando datos del usuario en microservicio Contenidos...");
 
+        try {
+            contenidosClient.eliminarComprasUsuario(id);
+            log.info("✅ Compras del usuario ID: {} eliminadas", id);
+        } catch (Exception e) {
+            log.error("⚠️ Error al eliminar compras del usuario ID: {}", id, e);
+        }
+
+        try {
+            contenidosClient.eliminarFavoritosUsuario(id);
+            log.info("✅ Favoritos del usuario ID: {} eliminados", id);
+        } catch (Exception e) {
+            log.error("⚠️ Error al eliminar favoritos del usuario ID: {}", id, e);
+        }
+
+        try {
+            contenidosClient.eliminarCarritoUsuario(id);
+            log.info("✅ Carrito del usuario ID: {} eliminado", id);
+        } catch (Exception e) {
+            log.error("⚠️ Error al eliminar carrito del usuario ID: {}", id, e);
+        }
+
+        // Eliminar preferencias en microservicio Recomendaciones
+        log.info("Eliminando preferencias en microservicio Recomendaciones...");
+        try {
+            recomendacionesClient.eliminarPreferenciasUsuario(id);
+            log.info("✅ Preferencias del usuario ID: {} eliminadas", id);
+        } catch (Exception e) {
+            log.error("⚠️ Error al eliminar preferencias del usuario ID: {}", id, e);
+        }
+
+        // Revocar todos los tokens de sesión activos
+        jwtService.revocarTodosLosTokensDelUsuario(id);
+        log.info("Todos los tokens de sesión revocados para usuario ID: {}", id);
+
+        // Marcar cuenta como inactiva (soft delete)
         usuario.setActivo(false);
         usuarioRepository.save(usuario);
 
-        log.warn("Cuenta de usuario eliminada (soft delete). Usuario ID: {} eliminado por usuario ID: {}", id, authenticatedUserId);
+        log.warn("✅ Cuenta de usuario eliminada (soft delete). Usuario ID: {} eliminado por usuario ID: {}",
+                id, authenticatedUserId);
     }
 
     /**

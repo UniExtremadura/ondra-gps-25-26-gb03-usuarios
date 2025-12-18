@@ -49,4 +49,12 @@ public interface MetodoCobroArtistaRepository extends JpaRepository<MetodoCobroA
      * @return lista de métodos de cobro del artista
      */
     List<MetodoCobroArtista> findByArtista_IdArtista(Long idArtista);
+
+    /**
+     * Obtiene el primer método de cobro creado para un artista.
+     *
+     * @param idArtista identificador del artista
+     * @return método de cobro más antiguo o null si no hay registros
+     */
+    MetodoCobroArtista findFirstByArtista_IdArtistaOrderByFechaCreacionAsc(Long idArtista);
 }

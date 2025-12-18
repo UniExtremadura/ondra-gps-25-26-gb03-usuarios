@@ -3,6 +3,7 @@ package com.ondra.users.services;
 import com.ondra.users.dto.MetodoCobroArtistaCrearDTO;
 import com.ondra.users.dto.MetodoCobroArtistaDTO;
 import com.ondra.users.dto.MetodoCobroArtistaEditarDTO;
+import com.ondra.users.dto.MetodoCobroBasicoDTO;
 import com.ondra.users.exceptions.ArtistaNotFoundException;
 import com.ondra.users.exceptions.ForbiddenAccessException;
 import com.ondra.users.exceptions.InvalidPaymentMethodException;
@@ -183,6 +184,52 @@ public class MetodoCobroArtistaService {
 
         metodoCobroRepository.delete(metodoCobro);
         log.info("✅ Método de cobro eliminado con ID: {}", idMetodoCobro);
+    }
+
+    /**
+     * Obtiene el primer método de cobro registrado por un artista.
+     *
+     * <p>Devuelve únicamente información básica del método, incluyendo su
+     * identificador y su tipo. Si el artista no tiene métodos de cobro,
+     * se devuelve {@code null}.</p>
+     *
+     * @param idArtista identificador del artista
+     * @return DTO con la información básica del primer método de cobro,
+     *         o {@code null} si no existen métodos asociados
+     */
+    @Transactional(readOnly = true)
+    public MetodoCobroBasicoDTO obtenerPrimerMetodoCobroBasico(Long idArtista) {
+        MetodoCobroArtista metodo = metodoCobroRepository
+                .findFirstByArtista_IdArtistaOrderByFechaCreacionAsc(idArtista);
+
+        if (metodo == null) {
+            return null;
+        }
+
+        return MetodoCobroBasicoDTO.builder()
+                .idMetodoCobro(metodo.getIdMetodoCobroArtista())
+                .tipo(metodo.getTipoCobro().name())
+                .build();
+    }
+
+    /**
+     * Obtiene un método de cobro en formato básico a partir de su identificador.
+     *
+     * <p>Devuelve únicamente los datos esenciales del método: su ID y su tipo.
+     * Si no existe ningún método con el identificador proporcionado,
+     * se devuelve {@code null}.</p>
+     *
+     * @param idMetodoCobro identificador del método de cobro
+     * @return DTO básico del método de cobro, o {@code null} si no existe
+     */
+    @Transactional(readOnly = true)
+    public MetodoCobroBasicoDTO obtenerMetodoCobroBasicoPorId(Long idMetodoCobro) {
+        return metodoCobroRepository.findById(idMetodoCobro)
+                .map(metodo -> MetodoCobroBasicoDTO.builder()
+                        .idMetodoCobro(metodo.getIdMetodoCobroArtista())
+                        .tipo(metodo.getTipoCobro().name())
+                        .build())
+                .orElse(null);
     }
 
     /**

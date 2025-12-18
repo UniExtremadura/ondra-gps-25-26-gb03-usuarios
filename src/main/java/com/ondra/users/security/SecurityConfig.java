@@ -111,6 +111,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/usuarios/logout").permitAll()
 
                         // Endpoints internos - Solo para microservicios
+                        .requestMatchers("/api/internal/**").hasRole("SERVICE")
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/*/datos-usuario").hasRole("SERVICE")
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/*/existe").hasRole("SERVICE")
 

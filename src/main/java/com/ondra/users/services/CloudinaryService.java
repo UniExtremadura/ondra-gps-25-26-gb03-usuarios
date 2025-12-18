@@ -39,6 +39,41 @@ public class CloudinaryService {
     private String folder;
 
     /**
+     * Lista de URLs protegidas que nunca se eliminarán de Cloudinary.
+     * Usadas principalmente para fotos de perfil de datos de seeding y desarrollo.
+     */
+    private static final List<String> URLS_PROTEGIDAS = List.of(
+            // === FOTOS DE PERFIL DE ARTISTAS ===
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1765996054/duki_m8x2jb.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1765996118/aitana_phwv23.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201873/avicii_q2afmo.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201880/daddyyankee_vigfof.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201917/rosalia_x1mhzj.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201921/sanguijuelasdelguadiana_io5l2x.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259674/quevedo_b822uv.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259674/extremoduro_n3ir0m.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259677/ardebogota_ik3zwo.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259673/myketowers_gg8ttu.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259673/melendi_xau7np.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259677/badbunny_hgsxp4.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259674/fitofitipaldis_obs5zc.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259674/juanmagan_wwm3cq.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259674/estopa_sq01bj.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259674/eladiocarrion_xwiuvd.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259675/coldplay_iyjftl.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259673/taylorswift_nwpyru.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764259935/recycledj_fjcmgy.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764260119/psicomotronic_mwh4te.jpg",
+
+            // === FOTOS DE PERFIL DE USUARIOS NORMALES ===
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1766074554/anagarcia_lpc4ef.webp",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201949/carlosmartinez_vmpvwd.webp",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201951/laurarodriguez_i6fh7k.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201952/miguelfernandez_ggngar.jpg",
+            "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201953/saragonzalez_tv5bgz.jpg"
+    );
+
+    /**
      * Sube una imagen a Cloudinary aplicando transformaciones.
      *
      * <p>La imagen se redimensiona a 500x500px con crop fill y calidad optimizada automáticamente.</p>
@@ -105,12 +140,21 @@ public class CloudinaryService {
      * <p>Extrae el public_id de la URL y elimina el recurso.
      * Si la URL es inválida o la imagen no existe, registra un warning sin lanzar excepción.</p>
      *
+     * <p>Las URLs protegidas (definidas en URLS_PROTEGIDAS) nunca se eliminarán,
+     * útil para preservar fotos de perfil de seeding y desarrollo.</p>
+     *
      * @param imageUrl URL completa de la imagen a eliminar
      * @throws ImageDeletionFailedException si falla la eliminación
      */
     public void eliminarImagen(String imageUrl) {
         if (imageUrl == null || imageUrl.isEmpty()) {
             log.warn("Intento de eliminar imagen con URL nula o vacía");
+            return;
+        }
+
+        // Verificar si la URL está protegida
+        if (URLS_PROTEGIDAS.contains(imageUrl)) {
+            log.info("🔒 URL protegida del seeder, no se eliminará: {}", imageUrl);
             return;
         }
 

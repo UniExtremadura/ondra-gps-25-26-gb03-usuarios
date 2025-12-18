@@ -64,7 +64,7 @@ public class ArtistasData {
                     "Cantante, rapero y compositor argentino, considerado uno de los mayores exponentes del trap latino.",
                     Arrays.asList("INSTAGRAM", "X", "SPOTIFY", "YOUTUBE", "TIKTOK", "FACEBOOK"),
                     true,
-                    "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201894/duki_s9ptgw.jpg"
+                    "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1765996054/duki_m8x2jb.jpg"
             ),
             new ArtistaInfo(
                     "Aitana",
@@ -73,7 +73,7 @@ public class ArtistasData {
                     "Cantante española de pop. Participó en OT 2017 y cuenta con temas reconocidos.",
                     Arrays.asList("INSTAGRAM", "X", "SPOTIFY", "YOUTUBE", "TIKTOK", "FACEBOOK"),
                     true,
-                    "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201872/aitana_s6j1u4.jpg"
+                    "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1765996118/aitana_phwv23.jpg"
             ),
             new ArtistaInfo(
                     "Avicii",

@@ -10,6 +10,7 @@ import com.ondra.users.models.dao.RedSocial;
 import com.ondra.users.models.dao.Usuario;
 import com.ondra.users.models.enums.TipoUsuario;
 import com.ondra.users.repositories.*;
+import com.ondra.users.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,11 +29,16 @@ import java.util.stream.Collectors;
 /**
  * Servicio para la gestión de perfiles de artistas.
  *
- * <p>Proporciona operaciones para crear, editar, eliminar y consultar perfiles de artistas,
- * así como la conversión de usuarios normales a artistas y viceversa.</p>
+ * <p>
+ * Proporciona operaciones para crear, editar, eliminar y consultar perfiles de
+ * artistas,
+ * así como la conversión de usuarios normales a artistas y viceversa.
+ * </p>
  *
- * <p>Las operaciones incluyen gestión de datos en múltiples microservicios y
- * sincronización con servicios externos como Cloudinary.</p>
+ * <p>
+ * Las operaciones incluyen gestión de datos en múltiples microservicios y
+ * sincronización con servicios externos como Cloudinary.
+ * </p>
  */
 @Slf4j
 @Service
@@ -48,6 +54,7 @@ public class ArtistaService {
     private final MetodoPagoUsuarioRepository metodoPagoUsuarioRepository;
     private final ContenidosClient contenidosClient;
     private final RecomendacionesClient recomendacionesClient;
+    private final JwtService jwtService;
 
     /**
      * Lista los artistas marcados como tendencia.
@@ -106,8 +113,8 @@ public class ArtistaService {
     /**
      * Edita el perfil de un artista.
      *
-     * @param idArtista identificador del artista a editar
-     * @param editarDTO datos de actualización
+     * @param idArtista           identificador del artista a editar
+     * @param editarDTO           datos de actualización
      * @param authenticatedUserId identificador del usuario autenticado
      * @return datos actualizados del artista
      * @throws ArtistaNotFoundException si el artista no existe
@@ -117,8 +124,7 @@ public class ArtistaService {
     public ArtistaDTO editarArtista(
             Long idArtista,
             EditarArtistaDTO editarDTO,
-            Long authenticatedUserId
-    ) {
+            Long authenticatedUserId) {
         log.debug("Editando perfil de artista ID: {} por usuario ID: {}",
                 idArtista, authenticatedUserId);
 
@@ -132,8 +138,7 @@ public class ArtistaService {
             log.warn("Usuario ID: {} intentó editar perfil de artista ID: {} sin permisos",
                     authenticatedUserId, idArtista);
             throw new ForbiddenAccessException(
-                    "No tienes permiso para modificar este perfil de artista"
-            );
+                    "No tienes permiso para modificar este perfil de artista");
         }
 
         boolean cambioNombreArtistico = false;
@@ -149,8 +154,7 @@ public class ArtistaService {
 
         if (cambioNombreArtistico) {
             String nuevoSlug = slugGeneratorService.generarSlugArtista(
-                    artista.getNombreArtistico()
-            );
+                    artista.getNombreArtistico());
             artista.setSlugArtistico(nuevoSlug);
             log.info("Slug de artista actualizado: {}", nuevoSlug);
         }
@@ -189,7 +193,7 @@ public class ArtistaService {
     /**
      * Elimina el perfil de artista y desactiva la cuenta de usuario.
      *
-     * @param idArtista identificador del artista a eliminar
+     * @param idArtista           identificador del artista a eliminar
      * @param authenticatedUserId identificador del usuario autenticado
      * @throws ArtistaNotFoundException si el artista no existe
      * @throws ForbiddenAccessException si el usuario no es propietario del perfil
@@ -209,8 +213,7 @@ public class ArtistaService {
             log.warn("Usuario ID: {} intentó eliminar perfil de artista ID: {} sin permisos",
                     authenticatedUserId, idArtista);
             throw new ForbiddenAccessException(
-                    "No tienes permiso para eliminar este perfil de artista"
-            );
+                    "No tienes permiso para eliminar este perfil de artista");
         }
 
         Usuario usuario = artista.getUsuario();
@@ -244,20 +247,6 @@ public class ArtistaService {
         }
 
         try {
-            contenidosClient.eliminarAlbumesArtista(idArtista);
-            log.info("✅ Álbumes del artista ID: {} eliminados del microservicio Contenidos", idArtista);
-        } catch (Exception e) {
-            log.error("⚠️ Error al eliminar álbumes del artista ID: {}", idArtista, e);
-        }
-
-        try {
-            contenidosClient.eliminarCancionesArtista(idArtista);
-            log.info("✅ Canciones del artista ID: {} eliminadas del microservicio Contenidos", idArtista);
-        } catch (Exception e) {
-            log.error("⚠️ Error al eliminar canciones del artista ID: {}", idArtista, e);
-        }
-
-        try {
             contenidosClient.eliminarComentariosUsuario(artista.getUsuario().getIdUsuario());
             log.info("✅ Comentarios del artista ID: {} eliminados del microservicio Contenidos", idArtista);
         } catch (Exception e) {
@@ -269,6 +258,20 @@ public class ArtistaService {
             log.info("✅ Valoraciones del artista ID: {} eliminadas del microservicio Contenidos", idArtista);
         } catch (Exception e) {
             log.error("⚠️ Error al eliminar valoraciones del artista ID: {}", idArtista, e);
+        }
+
+        try {
+            contenidosClient.eliminarAlbumesArtista(idArtista);
+            log.info("✅ Álbumes del artista ID: {} eliminados del microservicio Contenidos", idArtista);
+        } catch (Exception e) {
+            log.error("⚠️ Error al eliminar álbumes del artista ID: {}", idArtista, e);
+        }
+
+        try {
+            contenidosClient.eliminarCancionesArtista(idArtista);
+            log.info("✅ Canciones del artista ID: {} eliminadas del microservicio Contenidos", idArtista);
+        } catch (Exception e) {
+            log.error("⚠️ Error al eliminar canciones del artista ID: {}", idArtista, e);
         }
 
         try {
@@ -300,10 +303,12 @@ public class ArtistaService {
     /**
      * Permite a un artista renunciar a su perfil y volver a ser usuario normal.
      *
-     * <p>Elimina el perfil de artista y todos sus datos asociados, pero mantiene
-     * la cuenta de usuario activa con tipo de usuario normal.</p>
+     * <p>
+     * Elimina el perfil de artista y todos sus datos asociados, pero mantiene
+     * la cuenta de usuario activa con tipo de usuario normal.
+     * </p>
      *
-     * @param idArtista identificador del artista que renuncia
+     * @param idArtista           identificador del artista que renuncia
      * @param authenticatedUserId identificador del usuario autenticado
      * @throws ArtistaNotFoundException si el artista no existe
      * @throws ForbiddenAccessException si el usuario no es propietario del perfil
@@ -323,8 +328,7 @@ public class ArtistaService {
             log.warn("Usuario ID: {} intentó renunciar a perfil de artista ID: {} sin permisos",
                     authenticatedUserId, idArtista);
             throw new ForbiddenAccessException(
-                    "No tienes permiso para renunciar a este perfil de artista"
-            );
+                    "No tienes permiso para renunciar a este perfil de artista");
         }
 
         Usuario usuario = artista.getUsuario();
@@ -358,6 +362,20 @@ public class ArtistaService {
         }
 
         try {
+            contenidosClient.eliminarComentariosUsuario(artista.getUsuario().getIdUsuario());
+            log.info("✅ Comentarios del artista ID: {} eliminados del microservicio Contenidos", idArtista);
+        } catch (Exception e) {
+            log.error("⚠️ Error al eliminar comentarios del artista ID: {}", idArtista, e);
+        }
+
+        try {
+            contenidosClient.eliminarValoracionesUsuario(artista.getUsuario().getIdUsuario());
+            log.info("✅ Valoraciones del artista ID: {} eliminadas del microservicio Contenidos", idArtista);
+        } catch (Exception e) {
+            log.error("⚠️ Error al eliminar valoraciones del artista ID: {}", idArtista, e);
+        }
+
+        try {
             contenidosClient.eliminarAlbumesArtista(idArtista);
             log.info("✅ Álbumes del artista ID: {} eliminados del microservicio Contenidos", idArtista);
         } catch (Exception e) {
@@ -371,7 +389,6 @@ public class ArtistaService {
             log.error("⚠️ Error al eliminar canciones del artista ID: {}", idArtista, e);
         }
 
-
         usuario.setArtista(null);
         usuarioRepository.save(usuario);
         usuarioRepository.flush();
@@ -381,6 +398,11 @@ public class ArtistaService {
         usuarioRepository.save(usuario);
         usuarioRepository.flush();
         log.info("✅ Usuario ID: {} convertido a NORMAL", usuario.getIdUsuario());
+
+        // Revocar todos los tokens activos para forzar re-autenticación con el nuevo
+        // tipo de usuario
+        jwtService.revocarTodosLosTokensDelUsuario(usuario.getIdUsuario());
+        log.info("✅ Tokens revocados para usuario ID: {}. Debe autenticarse nuevamente.", usuario.getIdUsuario());
 
         artistaRepository.delete(artista);
         artistaRepository.flush();
@@ -394,11 +416,11 @@ public class ArtistaService {
     /**
      * Busca artistas con filtros opcionales y paginación.
      *
-     * @param search término de búsqueda para el nombre artístico
+     * @param search      término de búsqueda para el nombre artístico
      * @param esTendencia filtrar por artistas en tendencia
-     * @param orderBy tipo de ordenamiento ('most_recent' o 'oldest')
-     * @param page número de página
-     * @param limit tamaño de página
+     * @param orderBy     tipo de ordenamiento ('most_recent' o 'oldest')
+     * @param page        número de página
+     * @param limit       tamaño de página
      * @return página de artistas que cumplen los criterios
      */
     @Transactional(readOnly = true)
@@ -424,8 +446,7 @@ public class ArtistaService {
         Page<Artista> artistasPage = artistaRepository.buscarArtistas(
                 search,
                 esTendencia,
-                pageable
-        );
+                pageable);
 
         log.info("Encontrados {} artistas (página {} de {})",
                 artistasPage.getNumberOfElements(),
@@ -439,15 +460,18 @@ public class ArtistaService {
     /**
      * Convierte un usuario normal en artista.
      *
-     * <p>Crea un perfil de artista, sube la foto de perfil a Cloudinary y
-     * actualiza el tipo de usuario.</p>
+     * <p>
+     * Crea un perfil de artista, sube la foto de perfil a Cloudinary y
+     * actualiza el tipo de usuario.
+     * </p>
      *
-     * @param crearArtistaDTO datos del perfil artístico
-     * @param foto archivo de imagen para el perfil, puede ser null
+     * @param crearArtistaDTO     datos del perfil artístico
+     * @param foto                archivo de imagen para el perfil, puede ser null
      * @param authenticatedUserId identificador del usuario autenticado
      * @return datos del artista creado
-     * @throws UsuarioNotFoundException si el usuario no existe
-     * @throws InvalidDataException si el usuario ya es artista o el nombre artístico existe
+     * @throws UsuarioNotFoundException   si el usuario no existe
+     * @throws InvalidDataException       si el usuario ya es artista o el nombre
+     *                                    artístico existe
      * @throws ImageUploadFailedException si ocurre un error al subir la foto
      */
     @Transactional
@@ -478,8 +502,7 @@ public class ArtistaService {
         }
 
         String slugArtistico = slugGeneratorService.generarSlugArtista(
-                crearArtistaDTO.getNombreArtistico()
-        );
+                crearArtistaDTO.getNombreArtistico());
 
         String fotoUrl = null;
         if (foto != null && !foto.isEmpty()) {
@@ -507,6 +530,11 @@ public class ArtistaService {
         usuario.setTipoUsuario(TipoUsuario.ARTISTA);
         usuarioRepository.save(usuario);
 
+        // Revocar todos los tokens activos para forzar re-autenticación con el nuevo
+        // tipo de usuario
+        jwtService.revocarTodosLosTokensDelUsuario(usuario.getIdUsuario());
+        log.info("✅ Tokens revocados para usuario ID: {}. Debe autenticarse nuevamente.", usuario.getIdUsuario());
+
         log.info("Eliminando datos de usuario en microservicio Contenidos al convertirse en artista...");
         try {
             contenidosClient.eliminarComprasUsuario(authenticatedUserId);
@@ -527,6 +555,20 @@ public class ArtistaService {
             log.info("✅ Carrito eliminado para usuario convertido a artista ID: {}", authenticatedUserId);
         } catch (Exception e) {
             log.warn("⚠️ Error al eliminar carrito del usuario ID: {}", authenticatedUserId, e);
+        }
+
+        try {
+            contenidosClient.eliminarComentariosUsuario(authenticatedUserId);
+            log.info("✅ Comentarios eliminados para usuario convertido a artista ID: {}", authenticatedUserId);
+        } catch (Exception e) {
+            log.warn("⚠️ Error al eliminar comentarios del usuario ID: {}", authenticatedUserId, e);
+        }
+
+        try {
+            contenidosClient.eliminarValoracionesUsuario(authenticatedUserId);
+            log.info("✅ Valoraciones eliminadas para usuario convertido a artista ID: {}", authenticatedUserId);
+        } catch (Exception e) {
+            log.warn("⚠️ Error al eliminar valoraciones del usuario ID: {}", authenticatedUserId, e);
         }
 
         log.info("✅ Usuario ID: {} convertido en artista exitosamente (ID artista: {}, slug: {})",
@@ -571,8 +613,8 @@ public class ArtistaService {
                 .slugArtistico(artista.getSlugArtistico())
                 .idArtista(artista.getIdArtista())
                 .biografiaArtistico(artista.getBiografiaArtistico())
-                .fotoPerfil(artista.getFotoPerfilArtistico() != null ?
-                        artista.getFotoPerfilArtistico() : usuario.getFotoPerfil())
+                .fotoPerfil(artista.getFotoPerfilArtistico() != null ? artista.getFotoPerfilArtistico()
+                        : usuario.getFotoPerfil())
                 .tipoUsuario(usuario.getTipoUsuario())
                 .fechaRegistro(usuario.getFechaRegistro())
                 .build();
