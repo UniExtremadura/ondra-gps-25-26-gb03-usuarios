@@ -46,7 +46,7 @@ public class UsuariosData {
                     "Ana",
                     "García López",
                     "anagarcia",
-                    "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1764201947/anagarcia_ab2im5.jpg"
+                    "https://res.cloudinary.com/dh6w4hrx7/image/upload/v1766074554/anagarcia_lpc4ef.webp"
             ),
             new UsuarioInfo(
                     "Carlos",
